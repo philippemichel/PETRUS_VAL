@@ -47,3 +47,20 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Data files (privacy protection)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Generated figures
+figures/*.png
+figures/*.jpg
+figures/*.pdf
+!figures/.gitkeep
+
+# Reports output
+reports/*.html
+reports/*.pdf
+reports/*_files/

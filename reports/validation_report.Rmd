@@ -1,0 +1,218 @@
+---
+title: "PETRUS_VAL: Inter-observer Validation of Ultrasound Reading Quality"
+author: "Clinical Study Report"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+    code_folding: hide
+  pdf_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 6,
+  dpi = 300
+)
+
+# Load required packages
+library(tidyverse)
+library(irr)
+library(psych)
+library(knitr)
+library(kableExtra)
+
+# Source custom functions
+source("../R/functions.R")
+```
+
+# Executive Summary
+
+This report presents the results of the inter-observer validation study for ultrasound reading quality. The study evaluates the agreement between multiple observers in assessing ultrasound images.
+
+**Key Findings:**
+
+- [To be completed after analysis]
+
+# Introduction
+
+## Study Objectives
+
+The primary objectives of this study are:
+
+1. To assess inter-observer agreement in ultrasound reading quality
+2. To identify variables with high and low agreement
+3. To quantify reliability using appropriate statistical measures
+4. To provide recommendations for standardization and training
+
+## Methods
+
+### Statistical Analyses
+
+The following statistical methods were employed:
+
+- **Percentage Agreement**: Simple agreement percentage between observers
+- **Cohen's Kappa** (κ): For categorical variables (unweighted)
+- **Weighted Kappa**: For ordinal variables (quadratic weights)
+- **Intraclass Correlation Coefficient (ICC)**: For continuous measurements (ICC(2,1) two-way random effects, single rater)
+- **Bland-Altman Analysis**: For assessing agreement and bias in continuous measurements
+
+### Interpretation Guidelines
+
+**Cohen's Kappa / Weighted Kappa:**
+
+- < 0.00: Poor (less than chance agreement)
+- 0.00 - 0.20: Slight
+- 0.21 - 0.40: Fair
+- 0.41 - 0.60: Moderate
+- 0.61 - 0.80: Substantial
+- 0.81 - 1.00: Almost Perfect
+
+**Intraclass Correlation Coefficient (ICC):**
+
+- < 0.50: Poor
+- 0.50 - 0.75: Moderate
+- 0.75 - 0.90: Good
+- > 0.90: Excellent
+
+# Data Overview
+
+```{r load-data, eval=FALSE}
+# Load preprocessed data
+# Uncomment and modify path as needed
+# paired_data <- readRDS("../data/processed/paired_data.rds")
+# analysis_results <- readRDS("../data/processed/analysis_results.rds")
+```
+
+## Sample Characteristics
+
+```{r sample-characteristics, eval=FALSE}
+# Display sample size and characteristics
+# cat("Total number of paired observations:", nrow(paired_data), "\n")
+```
+
+## Data Quality
+
+```{r data-quality, eval=FALSE}
+# Report on missing data and completeness
+```
+
+# Results
+
+## Overall Agreement Statistics
+
+```{r summary-table, eval=FALSE}
+# Load and display summary table
+# summary_results <- read_csv("../data/processed/summary_results.csv")
+# 
+# kable(summary_results, 
+#       caption = "Summary of Inter-observer Agreement Statistics",
+#       digits = 3) %>%
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+#                 full_width = FALSE)
+```
+
+## Categorical Variables
+
+### Variable 1: [Variable Name]
+
+```{r categorical-var1, eval=FALSE}
+# Display results for categorical variable
+# result <- analysis_results[["Variable Name"]]
+# 
+# cat("Cohen's Kappa:", round(result$kappa$value, 3), "\n")
+# cat("Interpretation:", interpret_kappa(result$kappa$value), "\n")
+# 
+# # Display confusion matrix
+# kable(result$confusion_matrix,
+#       caption = "Confusion Matrix: Observer 1 vs Observer 2") %>%
+#   kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## Continuous Variables
+
+### Variable 2: [Variable Name]
+
+```{r continuous-var1, eval=FALSE}
+# Display results for continuous variable
+# result <- analysis_results[["Variable Name"]]
+# 
+# cat("ICC(2,1):", round(result$icc$results$ICC[2], 3), "\n")
+# cat("Interpretation:", interpret_icc(result$icc$results$ICC[2]), "\n")
+# cat("Pearson Correlation:", round(result$correlation$estimate, 3), "\n")
+```
+
+#### Bland-Altman Plot
+
+```{r bland-altman-var1, eval=FALSE, fig.cap="Bland-Altman plot showing agreement between observers"}
+# Display Bland-Altman plot
+# print(result$bland_altman_plot)
+```
+
+#### Scatter Plot
+
+```{r scatter-var1, eval=FALSE, fig.cap="Scatter plot comparing observer measurements"}
+# Display scatter plot
+# print(result$scatter_plot)
+```
+
+# Discussion
+
+## Strengths and Limitations
+
+**Strengths:**
+
+- [To be completed]
+
+**Limitations:**
+
+- [To be completed]
+
+## Clinical Implications
+
+[To be completed based on results]
+
+## Recommendations
+
+Based on the inter-observer agreement analysis:
+
+1. [Recommendation 1]
+2. [Recommendation 2]
+3. [Recommendation 3]
+
+# Conclusions
+
+[To be completed based on results]
+
+# References
+
+1. Cohen J. A coefficient of agreement for nominal scales. Educ Psychol Meas. 1960;20(1):37-46.
+2. Landis JR, Koch GG. The measurement of observer agreement for categorical data. Biometrics. 1977;33(1):159-174.
+3. Shrout PE, Fleiss JL. Intraclass correlations: uses in assessing rater reliability. Psychol Bull. 1979;86(2):420-428.
+4. Bland JM, Altman DG. Statistical methods for assessing agreement between two methods of clinical measurement. Lancet. 1986;1(8476):307-310.
+5. Koo TK, Li MY. A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research. J Chiropr Med. 2016;15(2):155-163.
+
+# Appendix
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+## Data Processing Details
+
+```{r processing-details, eval=FALSE}
+# Document any data processing steps
+```
