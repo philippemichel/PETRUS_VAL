@@ -58,11 +58,29 @@ The study employs several statistical methods to assess inter-observer agreement
 install.packages(c("tidyverse", "irr", "psych", "ggplot2", "knitr", "rmarkdown"))
 ```
 
-### Usage
+### Quick Start
 
-1. Place your data files in the `data/` directory
-2. Run the analysis scripts in the `scripts/` directory
-3. View results in the `results/` directory
+1. **Install required packages:**
+   ```r
+   source("scripts/00_setup.R")
+   ```
+
+2. **Try the example analysis:**
+   ```r
+   source("scripts/03_test_example.R")
+   ```
+
+3. **Use your own data:**
+   - Prepare data using the template: `data/data_template.csv`
+   - See the data dictionary: `docs/data_dictionary.md`
+   - Run analysis: `source("scripts/01_interobserver_analysis.R")`
+
+4. **Generate a report:**
+   ```r
+   rmarkdown::render("scripts/02_analysis_report.Rmd")
+   ```
+
+For detailed instructions, see the [Quick Start Guide](docs/quickstart_guide.md).
 
 ### Data Privacy
 
@@ -76,6 +94,13 @@ MIT License - see LICENSE file for details
 
 Philippe MICHEL
 
+### Documentation
+
+- **[Quick Start Guide](docs/quickstart_guide.md)**: Get started quickly with example data
+- **[Study Protocol](docs/study_protocol.md)**: Detailed methodology and study design
+- **[Data Dictionary](docs/data_dictionary.md)**: Variable specifications and data format
+- **[Contributing Guidelines](docs/CONTRIBUTING.md)**: How to contribute to the project
+
 ### Citation
 
-If you use this code or methodology, please cite appropriately (citation details to be added upon publication).
+If you use this code or methodology, please cite appropriately. See [CITATION.cff](CITATION.cff) for citation information.
