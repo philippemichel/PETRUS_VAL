@@ -49,6 +49,21 @@ rmarkdown::render("scripts/02_analysis_report.Rmd",
                   output_file = "../results/analysis_report.html")
 ```
 
+### 03_test_example.R
+Test script that demonstrates the analysis workflow using the included example data.
+
+**Features:**
+- Loads and analyzes example data
+- Calculates Kappa for categorical variables
+- Calculates ICC for continuous variables
+- Provides interpretation of results
+- Useful for learning and verification
+
+**Usage:**
+```r
+source("scripts/03_test_example.R")
+```
+
 ## Workflow
 
 1. **Setup environment**

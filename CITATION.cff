@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "PETRUS_VAL: Inter-observer Validation of Ultrasound Reading Quality"
+version: 0.1.0
+date-released: 2025-11-13
+authors:
+  - family-names: "MICHEL"
+    given-names: "Philippe"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/philippemichel/PETRUS_VAL"
+url: "https://github.com/philippemichel/PETRUS_VAL"
+abstract: >
+  A comprehensive R-based framework for conducting inter-observer 
+  validation studies of ultrasound reading quality. Includes statistical 
+  analysis tools for calculating Cohen's Kappa, Fleiss' Kappa, and 
+  Intraclass Correlation Coefficients, along with visualization tools 
+  and reporting templates.
+keywords:
+  - inter-observer reliability
+  - ultrasound
+  - medical imaging
+  - quality assessment
+  - Cohen's Kappa
+  - ICC
+  - clinical validation
+  - R
+license: MIT
