@@ -1,0 +1,275 @@
+---
+subtitle: "Plan d'analyse statistique - V1.3"
+lot: false
+lof: false
+eval: true
+---
+
+```{r info}
+rm(list=ls())
+library("baseph")
+library("tidyverse")
+library("boot")
+library("labelled")
+library("ggsci")
+library("readODS")
+library("gtsummary")
+library("irr")
+# sessionInfo()
+```
+
+# Généralités
+
+Le risque $\alpha$ retenu sera de 0,05 & la puissance de 0,8. Vu la taille de l'échantillon l'hypothèse de normalité peut être retenue.
+
+L'étude vise à valider une technique de mesure échographique du diamètre du nerf optique (\gls{dnno}) et de sa gaine (\gls{dgno}).
+
+## Taille de l'échantillon
+
+### Concordance inter observateur
+
+Il s'agit d'une étude purement observationelle donc impossible de calculer précisément un nombre de cas nécessaires. Néanmoins en se basant sur les mesures déjà effectuées & en prenant comme test principal l'\gls{icc} (modèle oneway) on obtient pour 144 mesures (3 lecteurs), trois experts un ICC à 0.9 [0.83 ; 0.94]. En augmentant le nombre de mesures sur neuf lecteurs une approximation par bootstrap montre une faible réduction de l'intervalle de confiance.
+
+### Validation de la technique suite à la formation
+ 
+
+
+
+## Données manquantes
+
+Le décompte des données manquantes sera réalisé & présenté par un tableau ou un graphique. Les variables comportant trop de données manquantes ou non utilisables ne seront pas prises en compte après validation par le promoteur. Les cas où la mesure du \gls{dgno} n'est pas notée seront exclus. Sinon les données manquantes seront imputées (\glspl{imput} multiples, 150 itérations au maximum --- package `missMDA`[@missmda]) si considérées comme manquant de manière complètement aléatoire (`MCAR`) ou manquant de manière aléatoire (`MAR`). Les cas où la mesure du \gls{dgno} n’est pas notée seront exclus.
+
+
+
+## Validation entre les experts
+
+On commence par vérifier la cohérence des mesures des experts en s'assurant que la différence entre les trois mesures ne dépasse pas un millimètre.
+
+Les mesures des trois experts seront alors analysées par une \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random* --- package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correcte.
+
+```{r}
+#| label: verif-prepa
+
+expl <- function(mot, anat = "x") {
+  aa <- tt1 |>
+    dplyr::select(contains("expert")) |>
+    dplyr::select(contains(mot)) |>
+    mutate(anat = anat)
+  names(aa) <- c(paste0("expert_", 1:3), "localisation")
+  return(aa)
+}
+
+loc <- c("nerf_dt", "nerf_gch", "gaine_dt", "gaine_gch")
+expn <- NULL
+#
+for (i in loc) {
+  ann <- str_split(i, "_", simplify = TRUE)[1]
+  xx <- expl(i, ann)
+  expn <- rbind(expn, xx)
+}
+
+expn <- expn |> 
+rowwise() |>
+  mutate(ecart = max(c_across(1:3), na.rm = TRUE) - min(c_across(1:3), na.rm = TRUE)) |> 
+ungroup() |> 
+  mutate(concordant = if_else(ecart < 1, "Oui", "Non"))
+```
+
+```{r}
+#| label: tbl-exp1
+#| tbl-cap: Concordance des mesures des experts
+
+expn |> 
+  dplyr::select(localisation, concordant) |> 
+  tbl_summary(by = localisation) |> 
+  add_overall(col_label = "**total**  \nN = {style_number(N)}",) |> 
+  modify_header(label ~ " ") |>
+bold_labels() |>
+pexptabph(nomfich = classeur,
+nomsheet = "exp1",
+exp = expx) 
+
+```
+
+```{r}
+#| label: fig-exp1
+#| fig-cap: Concordance des mesures des experts
+
+expn |> 
+  ggplot() +
+  aes(x = localisation, y = ecart, fill = localisation) +
+  geom_violin() +
+  geom_boxplot(width = 0.2,fill = "grey90") +
+  geom_hline(yintercept = 1, col = "red", linetype = "dotdash") +
+  labs(title = "Concordance des mesures des experts",
+      subtitle = "Selon la mesure",
+      x = "Localisation",
+      y = "Écart des mesures (mm)",
+      caption = "",
+      fill = "") +
+  theme_light() +
+  scale_fill_jama() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    axis.title.y = element_text(
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+  axis.text.x = element_text(size = 12),
+  axis.text.y = element_text(size = 12),
+  legend.position = "none"
+  )
+
+```
+
+
+# Phase 1
+
+## Qualification des intervenants
+
+*Chaque centre réalisera 10 coupes d’échographie orbitaire avec mesure du nerf optique qui seront relues par 3 experts afin d’analyser la concordance inter-observateur*
+
+La différence du \gls{dgno} entre les sujets sains & malades serait selon la littérature de \qty{2}{\mm}. On prend donc comme écart de mesure acceptable entre deux cliniciens \qty{1}{\mm}. Les cas de divergences supérieures seront notées en précisant s'il s'agit de résultats qui sont tous deux dans la zone *saine*, *malade* ou introduisant un doute. On considère correct un investigateur qui a ai plus trois erreurs sur les quarante mesures. 
+
+Les différences éventuelles dans les mesures seront recherchées  par un test de \textsc{Kappa-Cohen} (package `irr` [@irr]) en catégorisant les résultats en normal/pathologique avec un seuil admissible à \num{0.4} (accord modéré)[^1].
+
+ [^1]: Le seuil a été choisi bas en raison de la faible taille des échantillons (10 cas).
+
+La qualification des intervenant (analyse de concordance - stop and go) sera vérifiée sur les 60 premiers cas par une comparaison (diagramme de Bland & Altmann) entre la mesure réalisée dans les centres & la moyenne des mesures des trois experts. Puis une analyse en sensibilité/spécificité sera réalisée en prenant la mesure des expert comme gold-standard. Le \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random*) sera calculé (package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correct.
+
+Si pour certains centres les mesures semblent incorrectes l'information sera transmise à l'investigateur coordonnateur qui jugera comment gérer les résultats de ces centres pour la suite de l'étude (exclusion du centre, poursuite du contrôle par les experts\dots).
+
+Cette première phase concerne 60 patients.
+
+```{r}
+#| label: prepa_bland
+
+
+ n <- 60
+A <- (rnorm(n,20,1)*1)/15
+B <- (rnorm(n,20,1.2)*1)/15
+C <- (rnorm(n,20,1)*1 + rnorm(n,1,1.1) * 1)/15
+
+zz <- tibble(A,B,C) |> 
+rowwise() |> 
+mutate(moy = mean(c(A,B,C))) |> 
+mutate(ety = sd(c(A,B,C)))
+```
+
+```{r}
+#| label: fig-ba1
+#| fig-cap: titre
+#| eval: false
+
+
+aa <- zz |> 
+  pivot_longer(c(A,B,C)) 
+maa <- mean(aa$value)
+saa <- sd(aa$value)*1.96
+var_label(aa) <- c("Moyenne par sujet","Écart-type par sujet" ,"Examinateur","Mesure")
+
+aa |> 
+  ggplot() + 
+    aes(x = moy, y = value, col = name) +
+    geom_point() +
+    geom_hline(yintercept = maa) +
+    geom_hline(yintercept = c(maa-saa,maa +saa), linetype = 6) +
+    labs(title = "Mesures par examinateur",
+        subtitle = "Données fictives",
+        x = "Moyennes des mesures",
+        y = "Mesures",
+        caption = "Pour chaque cas les trois mesures sont représentées\n par trois points de couleur différente selon l'examinateur.",
+        color = "Examinateur") +
+    theme_light() +
+    scale_fill_jama() +
+    theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      legend.title = element_text(size = 12),
+      axis.title.y = element_text(
+        size = 12,
+        angle = 90,
+        vjust = .5
+      ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "right"
+    ) 
+```
+
+```{r}
+#| label: fig-ba2
+#| fig-cap: Écart-type des mesures
+#| eval: false
+
+msd <- mean(zz$ety)
+cib <- msd-sd(zz$ety)*1.96
+cih <- msd+sd(zz$ety)*1.96
+
+zz |> 
+  ggplot() + 
+    aes(x = moy, y = ety) +
+    geom_point(aes(x = )) +
+  geom_hline(yintercept = msd, linetype = 1) +
+  geom_hline(yintercept = c(cib, cih), linetype = 5) +
+      labs(title = "Différences inter examinateurs",
+        subtitle = "Données fictives",
+        x = "Moyennes des mesures",
+        y = "Écart-type des Mesures par cas",
+        caption = "",
+        color = "Examinateur") +
+    theme_light() +
+    scale_fill_jama() +
+    theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 12),
+      axis.title.x = element_text(size = 12),
+      legend.title = element_text(size = 12),
+      axis.title.y = element_text(
+        size = 12,
+        angle = 90,
+        vjust = .5
+      ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "right"
+    )
+
+
+```
+
+
+
+```{r}
+#| eval: false
+
+library("irr")
+tt |> 
+icc(
+  model = "twoway", 
+  type = "agreement", unit = "single"
+  )
+
+cht
+
+
+ 
+
+```
+
+# Technique {.appendix}
+
+L'analyse statistique sera réalisée avec le logiciel **R**[@rstat] & divers packages. Outre ceux cités dans le texte ou utilisera en particulier `tidyverse` [@tidy] & `baseph` [@baseph].
+
+Un dépôt GitHub sera utilisé qui ne comprendra que le code & non les données ou résultats. Au besoin un faux tableau de données sera présenté pour permettre des tests.
+
+<https://github.com/philippemichel/PETRUS>
+
+\printglossaries
+
+\addcontentsline{toc}{chapter}{C. Bibliographie}
