@@ -1,0 +1,11 @@
+patient_id,observer_id,assessment_date,quality_score,bladder_volume_ml,wall_thickness_mm,residual_volume_ml,image_quality_category
+P001,1,2025-01-15,8,450,3.2,45,Good
+P001,2,2025-01-15,7,455,3.1,42,Good
+P002,1,2025-01-16,9,380,2.8,35,Excellent
+P002,2,2025-01-16,9,385,2.9,38,Excellent
+P003,1,2025-01-17,6,520,3.5,65,Fair
+P003,2,2025-01-17,7,525,3.4,60,Good
+P004,1,2025-01-18,8,410,3.0,50,Good
+P004,2,2025-01-18,8,415,3.1,48,Good
+P005,1,2025-01-19,9,395,2.7,30,Excellent
+P005,2,2025-01-19,9,400,2.8,32,Excellent
