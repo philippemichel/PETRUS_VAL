@@ -47,3 +47,19 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Data files (for privacy)
+data/*.csv
+data/*.xlsx
+data/*.xls
+data/*.txt
+data/*.rds
+!data/data_template.csv
+!data/README.md
+
+# Results files
+results/*.pdf
+results/*.png
+results/*.jpg
+results/*.html
+!results/README.md

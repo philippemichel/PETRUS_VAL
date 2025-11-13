@@ -1,0 +1,7 @@
+reading_id,observer_id,technical_quality,diagnostic_quality,overall_quality,image_clarity,anatomical_views,adequacy,comments
+US001,OBS1,,,,,,,
+US001,OBS2,,,,,,,
+US001,OBS3,,,,,,,
+US002,OBS1,,,,,,,
+US002,OBS2,,,,,,,
+US002,OBS3,,,,,,,
