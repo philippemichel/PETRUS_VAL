@@ -1,0 +1,31 @@
+reading_id,observer_id,technical_quality,diagnostic_quality,overall_quality,image_clarity,anatomical_views,adequacy,comments
+US001,OBS1,Good,Good,7.5,Good,Adequate,Yes,Clear visualization of all structures
+US001,OBS2,Excellent,Excellent,8.5,Excellent,Adequate,Yes,Optimal image quality
+US001,OBS3,Good,Good,7.0,Good,Adequate,Yes,
+US002,OBS1,Fair,Fair,5.5,Fair,Adequate,No,Some technical artifacts present
+US002,OBS2,Fair,Good,6.0,Fair,Adequate,Yes,Adequate for interpretation despite minor issues
+US002,OBS3,Poor,Fair,4.5,Poor,Inadequate,No,Poor penetration
+US003,OBS1,Excellent,Excellent,9.0,Excellent,Adequate,Yes,
+US003,OBS2,Excellent,Excellent,9.5,Excellent,Adequate,Yes,Excellent study
+US003,OBS3,Good,Excellent,8.5,Excellent,Adequate,Yes,
+US004,OBS1,Poor,Poor,3.0,Poor,Inadequate,No,Multiple technical issues
+US004,OBS2,Poor,Poor,3.5,Poor,Inadequate,No,Non-diagnostic quality
+US004,OBS3,Fair,Poor,4.0,Poor,Inadequate,No,
+US005,OBS1,Good,Good,7.0,Good,Adequate,Yes,
+US005,OBS2,Good,Excellent,8.0,Good,Adequate,Yes,
+US005,OBS3,Fair,Good,6.5,Fair,Adequate,Yes,
+US006,OBS1,Excellent,Excellent,8.5,Excellent,Adequate,Yes,
+US006,OBS2,Good,Good,8.0,Good,Adequate,Yes,
+US006,OBS3,Excellent,Good,8.5,Good,Adequate,Yes,
+US007,OBS1,Fair,Fair,6.0,Fair,Adequate,Yes,Some motion artifacts
+US007,OBS2,Good,Fair,6.5,Fair,Adequate,Yes,
+US007,OBS3,Fair,Good,6.0,Good,Adequate,Yes,
+US008,OBS1,Good,Excellent,8.0,Good,Adequate,Yes,
+US008,OBS2,Excellent,Excellent,9.0,Excellent,Adequate,Yes,
+US008,OBS3,Good,Good,7.5,Good,Adequate,Yes,
+US009,OBS1,Poor,Fair,4.5,Poor,Inadequate,No,Limited visualization
+US009,OBS2,Fair,Fair,5.0,Poor,Adequate,No,
+US009,OBS3,Fair,Poor,5.0,Fair,Inadequate,No,
+US010,OBS1,Excellent,Good,8.5,Excellent,Adequate,Yes,
+US010,OBS2,Good,Good,8.0,Good,Adequate,Yes,
+US010,OBS3,Excellent,Excellent,8.5,Excellent,Adequate,Yes,
