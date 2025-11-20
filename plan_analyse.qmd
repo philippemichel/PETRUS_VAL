@@ -15,135 +15,94 @@ library("ggsci")
 library("readODS")
 library("gtsummary")
 library("irr")
+library("epiDisplay")
 # sessionInfo()
 ```
+
+```{r}
+#| label: prepa-donnees
+
+tt <- read_ods("datas/validation.ods", sheet = 5)
+```
+
 
 # Généralités
 
 Le risque $\alpha$ retenu sera de 0,05 & la puissance de 0,8. Vu la taille de l'échantillon l'hypothèse de normalité peut être retenue.
 
-L'étude vise à valider une technique de mesure échographique du diamètre du nerf optique (\gls{dnno}) et de sa gaine (\gls{dgno}).
 
 ## Taille de l'échantillon
 
-### Concordance inter observateur
+### Concordance inter observateurs
 
-Il s'agit d'une étude purement observationelle donc impossible de calculer précisément un nombre de cas nécessaires. Néanmoins en se basant sur les mesures déjà effectuées & en prenant comme test principal l'\gls{icc} (modèle oneway) on obtient pour 144 mesures (3 lecteurs), trois experts un ICC à 0.9 [0.83 ; 0.94]. En augmentant le nombre de mesures sur neuf lecteurs une approximation par bootstrap montre une faible réduction de l'intervalle de confiance.
+```{r}
+#| label: correct cluster
+
+nbase <- 144
+ip <- 0.75
+mclus <- 48
+
+treel <- nbase + (mclus -1) * ip
+treel <- round(treel*1.1+1, 0)
+tlect = round((treel/40)+1, 0)
+```
+
+
+
+Il s'agit d'une étude purement observationelle donc impossible de calculer précisément un nombre de cas nécessaires. Néanmoins en se basant sur les mesures déjà effectuées & en prenant comme test principal le \gls{icc} on peut approximer un nombre raisonnable à `r nbase` mesures. Ce calcul est valable pour un échantillon unique or on a ici un groupe de mesures par lecteur ce qui correspond à une analyse en cluster.Il faut donc appliquer un coefficient correcteur. En se basant sur un \gls{icc} à
+0,75 (limite basse considérée comme acceptable & donc le cas le plus défavorable pour les calculs) &  48 mesures par lecteur on obtient `r treel` mesures nécessaires soit **un minimum de  `r tlect` lecteurs**.
+
 
 ### Validation de la technique suite à la formation
- 
 
+```{r}
+mc <- mean(tt$candidat)
+sc <- sd(tt$candidat)
+me <-  mean(tt$experts)
+se <- sd(tt$experts)
+nn <- n.for.2means(
+  mu1 = mc,
+  mu2 = me,
+  sd1 = sc,
+  sd2 = se
+  )
+nmes <- nn$n1 + (mclus -1) * ip
+nlect <- round((nmes/48)+1, 0)
+```
+
+ 
+On compare la mesure du candidat à la moyenne des trois experts avec comme hypothèse nulle l'absence de différence entre les deux. On utilise pour cela un test t de Student pour séries appariées. Un calcul de puissance montre qu'il faudrait 708 mesures pour montrer une différence soit **15 lecteurs** (48 mesures par lecteur) à tester.
 
 
 ## Données manquantes
 
-Le décompte des données manquantes sera réalisé & présenté par un tableau ou un graphique. Les variables comportant trop de données manquantes ou non utilisables ne seront pas prises en compte après validation par le promoteur. Les cas où la mesure du \gls{dgno} n'est pas notée seront exclus. Sinon les données manquantes seront imputées (\glspl{imput} multiples, 150 itérations au maximum --- package `missMDA`[@missmda]) si considérées comme manquant de manière complètement aléatoire (`MCAR`) ou manquant de manière aléatoire (`MAR`). Les cas où la mesure du \gls{dgno} n’est pas notée seront exclus.
+Le décompte des données manquantes sera réalisé & présenté par un tableau ou un graphique. Les lecteurs ayant trop de données manquantes ou non utilisables (> 20 %)  ne seront pas pris en compte après validation par le promoteur. Sinon les données manquantes seront imputées (\glspl{imput} multiples, 150 itérations au maximum --- package `missMDA`[@missmda]) si considérées comme manquant de manière complètement aléatoire (`MCAR`) ou manquant de manière aléatoire (`MAR`). 
 
 
+# Analyse
 
 ## Validation entre les experts
 
-On commence par vérifier la cohérence des mesures des experts en s'assurant que la différence entre les trois mesures ne dépasse pas un millimètre.
+On commence par vérifier la cohérence des mesures des experts en s'assurant que la différence entre les trois mesures ne dépasse pas un millimètre. Le résultat sera présenté dans un tableau avec le nombre d'erreur par expert.  
 
-Les mesures des trois experts seront alors analysées par une \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random* --- package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correcte.
-
-```{r}
-#| label: verif-prepa
-
-expl <- function(mot, anat = "x") {
-  aa <- tt1 |>
-    dplyr::select(contains("expert")) |>
-    dplyr::select(contains(mot)) |>
-    mutate(anat = anat)
-  names(aa) <- c(paste0("expert_", 1:3), "localisation")
-  return(aa)
-}
-
-loc <- c("nerf_dt", "nerf_gch", "gaine_dt", "gaine_gch")
-expn <- NULL
-#
-for (i in loc) {
-  ann <- str_split(i, "_", simplify = TRUE)[1]
-  xx <- expl(i, ann)
-  expn <- rbind(expn, xx)
-}
-
-expn <- expn |> 
-rowwise() |>
-  mutate(ecart = max(c_across(1:3), na.rm = TRUE) - min(c_across(1:3), na.rm = TRUE)) |> 
-ungroup() |> 
-  mutate(concordant = if_else(ecart < 1, "Oui", "Non"))
-```
-
-```{r}
-#| label: tbl-exp1
-#| tbl-cap: Concordance des mesures des experts
-
-expn |> 
-  dplyr::select(localisation, concordant) |> 
-  tbl_summary(by = localisation) |> 
-  add_overall(col_label = "**total**  \nN = {style_number(N)}",) |> 
-  modify_header(label ~ " ") |>
-bold_labels() |>
-pexptabph(nomfich = classeur,
-nomsheet = "exp1",
-exp = expx) 
-
-```
-
-```{r}
-#| label: fig-exp1
-#| fig-cap: Concordance des mesures des experts
-
-expn |> 
-  ggplot() +
-  aes(x = localisation, y = ecart, fill = localisation) +
-  geom_violin() +
-  geom_boxplot(width = 0.2,fill = "grey90") +
-  geom_hline(yintercept = 1, col = "red", linetype = "dotdash") +
-  labs(title = "Concordance des mesures des experts",
-      subtitle = "Selon la mesure",
-      x = "Localisation",
-      y = "Écart des mesures (mm)",
-      caption = "",
-      fill = "") +
-  theme_light() +
-  scale_fill_jama() +
-  theme(
-    plot.title = element_text(size = 14, face = "bold"),
-    plot.subtitle = element_text(size = 12),
-    axis.title.x = element_text(size = 12),
-    legend.title = element_text(size = 12),
-    axis.title.y = element_text(
-      size = 12,
-      angle = 90,
-      vjust = .5
-    ),
-  axis.text.x = element_text(size = 12),
-  axis.text.y = element_text(size = 12),
-  legend.position = "none"
-  )
-
-```
+La concordance des mesures des trois experts sera alors analysée par une \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random* --- package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correcte.
 
 
-# Phase 1
+
+
 
 ## Qualification des intervenants
 
 *Chaque centre réalisera 10 coupes d’échographie orbitaire avec mesure du nerf optique qui seront relues par 3 experts afin d’analyser la concordance inter-observateur*
 
-La différence du \gls{dgno} entre les sujets sains & malades serait selon la littérature de \qty{2}{\mm}. On prend donc comme écart de mesure acceptable entre deux cliniciens \qty{1}{\mm}. Les cas de divergences supérieures seront notées en précisant s'il s'agit de résultats qui sont tous deux dans la zone *saine*, *malade* ou introduisant un doute. On considère correct un investigateur qui a ai plus trois erreurs sur les quarante mesures. 
+La différence du \gls{dgno} entre les sujets sains & malades serait selon la littérature de \qty{2}{\mm}. On prend donc comme écart de mesure acceptable entre le lecteur & la moyenne des mesures des experts à \qty{1}{\mm}. Les cas de divergences supérieures seront notées en précisant s'il s'agit de résultats qui sont tous deux dans la zone *saine*, *malade* ou introduisant un doute. On considère correct un investigateur qui a au plus trois erreurs sur les quarante ou quarante-huit mesures. 
 
 Les différences éventuelles dans les mesures seront recherchées  par un test de \textsc{Kappa-Cohen} (package `irr` [@irr]) en catégorisant les résultats en normal/pathologique avec un seuil admissible à \num{0.4} (accord modéré)[^1].
 
- [^1]: Le seuil a été choisi bas en raison de la faible taille des échantillons (10 cas).
+ [^1]: Le seuil a été choisi bas en raison de la faible taille des échantillons (10 ou 12 cas).
 
-La qualification des intervenant (analyse de concordance - stop and go) sera vérifiée sur les 60 premiers cas par une comparaison (diagramme de Bland & Altmann) entre la mesure réalisée dans les centres & la moyenne des mesures des trois experts. Puis une analyse en sensibilité/spécificité sera réalisée en prenant la mesure des expert comme gold-standard. Le \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random*) sera calculé (package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correct.
+La qualification des intervenants sera présentée par une comparaison (diagramme de Bland & Altmann) entre la mesure réalisée dans les centres & la moyenne des mesures des trois experts. Puis une analyse en sensibilité/spécificité sera réalisée en prenant la mesure des expert comme gold-standard. Le \gls{icc} inter-évaluateurs (modèle à deux facteurs à effets aléatoires --- *two-way random*) sera calculé (package `irr` [@irr]). Un \gls{icc} \> \num{0.75} sera considéré comme correct.
 
-Si pour certains centres les mesures semblent incorrectes l'information sera transmise à l'investigateur coordonnateur qui jugera comment gérer les résultats de ces centres pour la suite de l'étude (exclusion du centre, poursuite du contrôle par les experts\dots).
-
-Cette première phase concerne 60 patients.
 
 ```{r}
 #| label: prepa_bland
@@ -262,14 +221,16 @@ cht
 
 ```
 
-# Technique {.appendix}
+# Technique {.unnumbered}
 
 L'analyse statistique sera réalisée avec le logiciel **R**[@rstat] & divers packages. Outre ceux cités dans le texte ou utilisera en particulier `tidyverse` [@tidy] & `baseph` [@baseph].
 
 Un dépôt GitHub sera utilisé qui ne comprendra que le code & non les données ou résultats. Au besoin un faux tableau de données sera présenté pour permettre des tests.
 
-<https://github.com/philippemichel/PETRUS>
+<https://github.com/philippemichel/PETRUS_VAL>
 
 \printglossaries
 
-\addcontentsline{toc}{chapter}{C. Bibliographie}
+# Bibliographie  {.unnumbered}
+
+
