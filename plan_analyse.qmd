@@ -1,5 +1,5 @@
 ---
-subtitle: "Plan d'analyse statistique - V1.3"
+subtitle: "Plan d'analyse statistique - V1.4"
 lot: false
 lof: false
 eval: true
@@ -49,8 +49,7 @@ tlect = round((treel/40)+1, 0)
 
 
 
-Il s'agit d'une étude purement observationelle donc impossible de calculer précisément un nombre de cas nécessaires. Néanmoins en se basant sur les mesures déjà effectuées & en prenant comme test principal le \gls{icc} on peut approximer un nombre raisonnable à `r nbase` mesures. Ce calcul est valable pour un échantillon unique or on a ici un groupe de mesures par lecteur ce qui correspond à une analyse en cluster.Il faut donc appliquer un coefficient correcteur. En se basant sur un \gls{icc} à
-0,75 (limite basse considérée comme acceptable & donc le cas le plus défavorable pour les calculs) &  48 mesures par lecteur on obtient `r treel` mesures nécessaires soit **un minimum de  `r tlect` lecteurs**.
+Il s'agit d'une étude purement observationelle donc impossible de calculer précisément un nombre de cas nécessaires. Néanmoins en se basant sur les mesures déjà effectuées & en prenant comme test principal le \gls{icc} on peut approximer un nombre raisonnable à `r nbase` mesures. Ce calcul est valable pour un échantillon unique or on a ici un groupe de mesures par lecteur ce qui correspond à une analyse en cluster.Il faut donc appliquer un coefficient correcteur. En se basant sur un \gls{icc} à 0,75 (limite basse considérée comme acceptable & donc le cas le plus défavorable pour les calculs) &  48 mesures par lecteur on obtient `r treel` mesures nécessaires soit **un minimum de  `r tlect` lecteurs**.
 
 
 ### Validation de la technique suite à la formation
@@ -71,7 +70,7 @@ nlect <- round((nmes/48)+1, 0)
 ```
 
  
-On compare la mesure du candidat à la moyenne des trois experts avec comme hypothèse nulle l'absence de différence entre les deux. On utilise pour cela un test t de Student pour séries appariées. Un calcul de puissance montre qu'il faudrait 708 mesures pour montrer une différence soit **15 lecteurs** (48 mesures par lecteur) à tester.
+On compare la mesure du candidat à la moyenne des trois experts avec comme hypothèse nulle l'absence de différence entre les deux. On utilise pour cela un test t de Student pour séries appariées dont une est une moyenne. Un calcul de puissance montre qu'il faudrait environ 500 mesures pour montrer une différence soit **11 à 12 lecteurs** (48 mesures par lecteur) à tester.
 
 
 ## Données manquantes
@@ -93,7 +92,7 @@ La concordance des mesures des trois experts sera alors analysée par une \gls{i
 
 ## Qualification des intervenants
 
-*Chaque centre réalisera 10 coupes d’échographie orbitaire avec mesure du nerf optique qui seront relues par 3 experts afin d’analyser la concordance inter-observateur*
+*Chaque centre réalisera dix examens d’échographie orbitaire soit quarante coupes avec mesure du nerf optique & de sa gaine qui seront relues par 3 experts afin d’analyser la concordance inter-observateur*
 
 La différence du \gls{dgno} entre les sujets sains & malades serait selon la littérature de \qty{2}{\mm}. On prend donc comme écart de mesure acceptable entre le lecteur & la moyenne des mesures des experts à \qty{1}{\mm}. Les cas de divergences supérieures seront notées en précisant s'il s'agit de résultats qui sont tous deux dans la zone *saine*, *malade* ou introduisant un doute. On considère correct un investigateur qui a au plus trois erreurs sur les quarante ou quarante-huit mesures. 
 
