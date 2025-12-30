@@ -12,17 +12,25 @@ library("labelled")
 
 
 # Nombre de feuilles
-nsh <- read_ods("datas/validation2.ods", sheet = 1, range = "A23", col_names = FALSE)
+nsh <- read_ods("datas/validation.ods", sheet = 1, range = "A30", col_names = FALSE)
 nsh <- nsh[[1, 1]]
 
 #
 import_val <- function(sh) {
-  nna <- c("", " ", "NA", "ND", "#DIV/0 !", "NC")
-  nom <- read_ods("datas/validation2.ods", sheet = sh, range = "C4:C5", col_names = FALSE)
+  nna <- c(
+    "", " ", "NA", "ND", "#DIV/0", "!", "NC", "Non visible", "NON MESURABLE", "non evaluable",
+    "PAS DIMAGES SANS MESURES", "IMPOSSIBLE", "non évaluable", "#DIV/0 !"
+  )
+  nom <- read_ods("datas/validation.ods", sheet = sh, range = "C4:C5", col_names = FALSE)
   print(nom)
-  lect <- read_ods("datas/validation2.ods", sheet = sh, range = "B11:E22", col_names = FALSE, na = nna)
-  exp <- read_ods("datas/validation2.ods", sheet = sh, range = "R11:U22", col_names = FALSE, na = nna)
-  dif <- abs(lect - exp)
+  lect <- read_ods("datas/validation.ods", sheet = sh, range = "B11:E23", col_names = FALSE, na = nna) |>
+    dplyr::filter(...1 != "zz" | is.na(...1)) |>
+    mutate_all(as.numeric)
+  exp <- read_ods("datas/validation.ods", sheet = sh, range = "R11:U23", col_names = FALSE, na = nna) |>
+    dplyr::filter(...1 != "zz" | is.na(...1)) |>
+    mutate_all(as.numeric)
+  dif <- abs(exp - lect)
+  names(lect) <- paste0("lect", 1:4)
   names(dif)[1:4] <- c("nf_dt", "gn_dt", "nf_gch", "gn_gch")
   #
   nf <- c(dif$nf_dt, dif$nf_gch)
