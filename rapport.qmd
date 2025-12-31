@@ -1,0 +1,91 @@
+---
+subtitle: "validation"
+---
+
+```{r}
+#| label: setup
+
+rm(list = ls())
+#
+library(baseph)
+library(tidyverse)
+library(gtsummary)
+library(kableExtra)
+library(lubridate)
+library(forestmodel)
+library(labelled)
+library(epiDisplay)
+library(visdat)
+library(GGally)
+library(ggridges)
+library(colorspace)
+library(apyramid)
+
+#
+theme_gtsummary_language(language = "fr", decimal.mark = ",")
+options(OutDec = ",")
+#
+load("datas/validation.RData")
+expx <- TRUE
+classeur <- "validation1.xls"
+if (expx){system(paste0("rm -f ",classeur))}
+#
+cat <- list(all_continuous() ~ "wilcox.test", all_categorical() ~ "chisq.test")
+affl <- list(all_categorical()~"{n}/{N} ({p})")
+```
+
+
+# Réponses
+
+On regarde en premier le nombre de réponses (mesures réellement effectuées) par lecteur.
+
+```{r}
+#| label: nbreponses
+
+
+tt <- val |> 
+pivot_longer(cols = c(nerf, gaine), names_to = "type", values_to = "dif")
+
+
+total <- tt |> 
+  group_by(nom) |>
+  summarise(
+    total = n())
+
+vrai <- tt |>
+  dplyr::filter(!is.na(dif)) |>
+  group_by(nom) |>
+  summarise(
+    vrai = n())
+
+tta <- vrai
+tta$total <- total$total
+
+tta <- tta |> 
+  mutate("% Réponses" = paste0(round(100*vrai/total, 0), " %"))
+
+tta |> 
+  kbl(booktabs = TRUE) |> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+ 
+# Erreur
+
+On compte le nombre de cas où la mesure du lecteur diffère de plus de \qty{1}{\mm} de la moyenne des masures des experts. Ne sont prises en compte que les mesures effectuées pas les *mesure impossible* ou autre. 
+
+```{r}
+
+tt <- tt |> 
+  mutate(erreur = ifelse(dif> 1,1,0))
+
+zz <- tt |> 
+  group_by(nom) |> 
+  summarise('nb erreur' = sum(erreur,na.rm = TRUE)) |> 
+  mutate(total = total$total)
+
+zz |> 
+  kbl(booktabs = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
