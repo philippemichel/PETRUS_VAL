@@ -32,8 +32,8 @@ pdf-engine: lualatex
 keep-tex: true
 number-sections: true
 toc: true
-lof: false
-lot: false
+lof: true
+lot: true
 fig-cap-location: bottom
 tbl-cap-location: top
 #classoption: [french]

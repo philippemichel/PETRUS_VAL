@@ -1,5 +1,5 @@
 ---
-subtitle: "validation"
+subtitle: "Qualification des intervenants --- V1.1"
 ---
 
 ```{r}
@@ -12,12 +12,12 @@ library(tidyverse)
 library(gtsummary)
 library(kableExtra)
 library(lubridate)
-library(forestmodel)
+library(readODS)
 library(labelled)
 library(epiDisplay)
 library(visdat)
 library(GGally)
-library(ggridges)
+library(irr)
 library(colorspace)
 library(apyramid)
 
@@ -26,25 +26,24 @@ theme_gtsummary_language(language = "fr", decimal.mark = ",")
 options(OutDec = ",")
 #
 load("datas/validation.RData")
-expx <- TRUE
-classeur <- "validation1.xls"
-if (expx){system(paste0("rm -f ",classeur))}
+exp <- FALSE
+classeur <- "validation1.ods"
+# if (exp){system(paste0("rm -f ",classeur))}
 #
 cat <- list(all_continuous() ~ "wilcox.test", all_categorical() ~ "chisq.test")
 affl <- list(all_categorical()~"{n}/{N} ({p})")
 ```
 
 
+
+
 # Réponses
 
-On regarde en premier le nombre de réponses (mesures réellement effectuées) par lecteur.
+On regarde en premier le nombre de réponses (mesures réellement effectuées) par lecteur. La colonne `total` représente le nb de mesures que le lecteur aurait du faire. La colonne `vrai` les mesures réellement réalisées. 
 
 ```{r}
-#| label: nbreponses
-
-
-tt <- val |> 
-pivot_longer(cols = c(nerf, gaine), names_to = "type", values_to = "dif")
+#| label: tbl-nb-rep
+#| tbl-cap: Nombre de réponses
 
 
 total <- tt |> 
@@ -68,24 +67,196 @@ tta |>
   kbl(booktabs = TRUE) |> 
   kable_styling(latex_options = c("striped", "hold_position"))
 
+
+    if (exp) {
+      tta |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "nbreponses", append = TRUE)
+    }
+
 ```
  
 # Erreur
 
-On compte le nombre de cas où la mesure du lecteur diffère de plus de \qty{1}{\mm} de la moyenne des masures des experts. Ne sont prises en compte que les mesures effectuées pas les *mesure impossible* ou autre. 
+On compte le nombre de cas où la mesure du lecteur diffère de plus de \qty{1}{\mm} de la moyenne des mesures des experts. Ne sont prises en compte que les mesures effectuées pas les <*mesure impossible*> ou autre. 
 
 ```{r}
-
-tt <- tt |> 
-  mutate(erreur = ifelse(dif> 1,1,0))
+#| label: tbl-nbrerreur
+#| tbl-cap: "Nombre d'erreurs de mesure par lecteur"
 
 zz <- tt |> 
+  mutate(erreur = ifelse(dif> 1,1,0)) |> 
   group_by(nom) |> 
   summarise('nb erreur' = sum(erreur,na.rm = TRUE)) |> 
-  mutate(total = total$total)
+  mutate(total = total$total) 
 
 zz |> 
   kbl(booktabs = TRUE)|> 
   kable_styling(latex_options = c("striped", "hold_position"))
+
+    if (exp) {
+      zz |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "nberreur", append = TRUE)
+    }
 ```
+
+# Concordance des diagnostics  
+
+La concordance des diagnostics  est évaluée par un \gls{icc}  inter-évaluateurs (modèle à un facteurs à effets aléatoires — one-way random). Un \gls{icc} > 0,75 peut être considéré comme correct.
+
+## Bland-Altman
+
+
+```{r}
+#| label: fig-blandaltman
+#| fig-cap: Concordance des mesures entre lecteurs et experts (Bland-Altman)
+
+ggplot(tt, aes(x = expert, y = lecteur-expert, color = type)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = -1, linetype = "dashed", color = "black") +
+  geom_hline(aes(yintercept = mean(lecteur - expert, na.rm = TRUE)), color = "blue") +
+  labs(
+    title = "Concordance des mesures entre lecteurs et experts",
+    subtitle = "Diagramme de  Bland-Altman",
+    x = "Mesures des Experts",
+    y = "Différence des mesures (Lecteur - Expert)",
+    caption = "Les lignes en pointillés représentent les limites de concordance à ± 1 mm,
+    
+    la ligne bleu la moyenne des différences."
+  ) +
+       theme_minimal() +
+  scale_fill_discrete_qualitative(palette = "Dark 3") +
+  theme(
+    plot.title = element_text(size = 10, face = "bold"),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    axis.title.x = element_text(size = 8),
+    axis.title.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "top"
+  )                                                                                                                    
+```
+
+
+Les lecteurs ont tendance à surévaluer les tailles par rapport aux experts.
+
+## ICC global
+
+```{r}
+#| label: icc-results
+
+zz <- tt |> 
+  dplyr::select(lecteur, expert) |>
+  na.omit() |>
+icc(
+  model = "twoway", 
+  type = "agreement", unit = "average"
+  )
+
+```
+
+Le calcul est réalisé sur `r round(zz$subjects,2)` mesures. L'\gls{icc}  est de `r round(zz$value, 2)` (IC95% : `r round(zz$lbound, 2)` - `r round(zz$ubound, 2)`), ce qui indique une **`r ifelse(zz$value > 0.75, "bonne", "mauvaise")` concordance** entre les lecteurs et les experts.
+
+\newpage
+
+## ICC par lecteur
+
+```{r}
+#| label: tbl-icc
+#| tbl-cap: ICC par lecteur
+
+nn <- levels(tt$nom)
+
+icc_lecteur <- function(nom_lect) {
+  ttx <- tt |> 
+ #   dplyr::filter(type == "nerf") |>
+    dplyr::filter(nom == nom_lect) |>
+    dplyr::select(lecteur, expert) |>
+    na.omit()
+  zz <- icc(
+    ttx,
+    model = "twoway", 
+    type = "consistency", unit = "single"
+  )
+  return(c(nom_lect,nrow(ttx),paste0(round(zz$value, 2), " (", round(zz$lbound, 2), " - ", round(zz$ubound, 2), ")")))
+}
+  #
+  zz <- NULL
+  for(i in 1:length(nn)) {
+    ll <- icc_lecteur(nn[i])
+    zz <- rbind(zz, ll)
+  }
+  zz <- as_tibble(zz)
+  names(zz) <- c("Lecteur", "Nb mesures", "ICC (IC95%)")
+  #
+  zz |> 
+    kbl(booktabs = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+    if (exp) {
+      zz |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "icc", append = TRUE)
+    }
+  
+```
+
+```{r}
+#| label: fig-icc
+#| fig-cap: ICC par lecteur
+
+icc_lecteur <- function(nom_lect) {
+  ttx <- tt |> 
+    dplyr::filter(nom == nom_lect) |>
+    dplyr::select(lecteur, expert) |>
+    drop_na()
+  zz <- icc(
+    ttx,
+    model = "twoway", 
+    type = "consistency", unit = "s"
+  )
+  return(list(nom = nom_lect, 
+              icc = as.numeric(zz$value), 
+              icb = as.numeric(zz$lbound), 
+              ich = as.numeric(zz$ubound)))
+}
+  zz <- NULL
+  for(i in 1:length(nn)) {
+    ll <- icc_lecteur(nn[i])
+    zz <- rbind(zz, c(ll$icc, ll$icb, ll$ich))
+  }
+  zz <- as_tibble(zz)
+  zz$nom <- nn
+  names(zz) <- c("ICC", "icb", "ich","Lecteur")
+
+  zz |> 
+    ggplot(aes(x = reorder(Lecteur, ICC), y = ICC)) +
+    geom_point() +
+    geom_errorbar(aes(ymin = icb, ymax = ich), width = 0.2) +
+    geom_hline(yintercept = 0.75, linetype = "dashed", color = "red") +
+    scale_y_continuous(limits = c(0.4, 1), breaks = seq(0.4, 1, by = 0.2)) +
+    coord_flip() +
+    labs(
+      title = "ICC par lecteur",
+      x = "Lecteur",
+      y = "ICC (avec IC95%)",
+      caption = "La ligne en pointillés rouges représente le seuil de 0,75 (bonne concordance)."
+    ) +
+      theme_minimal() +
+  scale_fill_discrete_qualitative(palette = "Dark 3") +
+  theme(
+    plot.title = element_text(size = 10, face = "bold"),
+    plot.subtitle = element_text(size = 8),
+    axis.title.x = element_text(size = 8),
+    axis.title.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "none"
+  )
+```
+
 
