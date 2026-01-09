@@ -1,0 +1,225 @@
+---
+title: "PETRUS"
+subtitle: "Validation & contrôle qualité des experts"
+lang: fr
+language:
+  title-block-author-single: "Auteur"
+author:
+  - name: "Dr Philippe MICHEL"
+    orcid: "0000-0003-2392-7186"
+    email: "philippe.michel@ght-novo.fr"
+    role: "Statisticien"
+    affiliations:
+      name: "USRC - Hôpital NOVO"
+      city: Pontoise
+      department: "Unité de Soutien à la Recherche Clinique"
+title-block-banner: true
+format:
+  html:
+    embed-resources: true
+    theme: minty
+    code-fold: true
+    html-math-method: katex
+    highlight-style: ayu
+    page-layout: full
+    toc: true
+    number-sections: true
+    smooth-scroll: true
+    citation-hover: true
+bibliography: stat.bib
+csl: jama.csl
+license: "MIT"
+warning: false
+message: false
+cache: false
+---
+::: {.panel-tabset}
+
+# Introduction
+
+```{r}
+#| label: setup
+
+rm(list = ls())
+
+library("tidyverse")
+library("readODS")
+library("labelled")
+library("forestmodel")
+library("gtsummary")
+library("kableExtra")
+library("plotly")
+library("janitor")
+library("irr")
+library("baseph")
+library("colorspace")
+
+theme_gtsummary_language(language = "fr", decimal.mark = ",")
+options(OutDec = ",")
+```
+
+Pour l'utilisation des graphiques & tableaux ces derniers sont anonymisés. 
+
+Pour usage interne :
+
+- exp1 :AL TABAA Omar
+- exp2 : OTTAVIANI Sébastien
+- exp3 : ESPITIA Olivier
+
+
+# Contrôle global
+
+```{r}
+#| label: macro-import
+# Nombre de feuilles
+nsh <- read_ods("datas/validation.ods", sheet = 1, range = "A30", col_names = FALSE)
+nsh <- nsh[[1, 1]]
+#
+range <- c("F10:I23", "J10:M23", "N10:Q23")
+nfg <- c("nf_dt", "gn_dt", "nf_gch", "gn_gch")
+#
+expsg <- function(sh, i) {
+  nna <- c(
+    "", " ", "NA", "ND", "#DIV/0", "!", "NC", "Non visible", "NON MESURABLE", "non evaluable",
+    "PAS DIMAGES SANS MESURES", "IMPOSSIBLE", "non évaluable", "#DIV/0 !"
+  )
+  tit <- paste0("exp", i)
+  zz <- read_ods("datas/validation.ods", sheet = sh, range = range[i], col_names = TRUE, na = nna) |>
+    clean_names() |>
+    #  dplyr::filter(nerf_optique_droit!= "zz" | is.na(nerf_optique_droit)) |>
+    mutate_all(as.numeric) |>
+    pivot_longer(cols = everything(), values_to = tit)
+  return(zz)
+}
+
+```
+
+```{r}
+#| label: import
+#
+tt <- tibble(structure = NULL, exp1 = NULL, exp2 = NULL, exp3 = NULL)
+
+for (sh in 1:nsh) {
+  ll <- rep(nfg, 13)
+  for (i in 1:3) {
+    zz <- expsg(sh, i)
+    ll <- cbind(ll, zz[, 2])
+  }
+  tt <- rbind(tt, ll)
+}
+## Recodage de tt$ll en tt$structure
+tt$structure <- tt$ll |>
+  fct_recode(
+    "gaine" = "gn_dt",
+    "gaine" = "gn_gch",
+    "nerf" = "nf_dt",
+    "nerf" = "nf_gch"
+  )
+```
+
+
+
+On calcule l'ICC sur l'ensemble des mesures des experts pour les validations des treize candidats.
+
+```{r}
+#| label: icc-contrôle
+
+zz <-  tt |> 
+   dplyr::select(starts_with("exp")) |> 
+   drop_na() |> 
+ icc(
+   model = "twoway", 
+   type = "consistency", unit = "s"
+ )
+```
+
+Le calcul est réalisé sur `r round(zz$subjects,2)` mesures. L'ICC  est de `r round(zz$value, 2)` (IC95% : `r round(zz$lbound, 2)` - `r round(zz$ubound, 2)`), ce qui indique une **`r ifelse(zz$value > 0.75, "bonne", "mauvaise")` concordance** entre les trois experts sans plus.
+
+
+## Analyse par expert
+
+```{r}
+ttl <- tt |> 
+  pivot_longer(cols = c(exp1,exp2,exp3))
+
+zz <- kruskal.test(value ~ name, data = ttl)
+```
+
+
+```{r}
+#| label: concor-multi
+#| 
+lm(value~name + structure, data = ttl) |> 
+forest_model()
+```
+
+IL existe une différence significative entre les trois experts (`r beaup(zz$p.value, affp = 1)` - test de Kruskal-Wallis) même après standardisation sur la structure étudiée.
+
+# Validation intra expert
+
+Une série de mesure est réalisée deux fois par chaque expert. 
+
+```{r}
+#| label: import2
+
+tra <- read_ods("datas/intra.ods", sheet = 4, col_names = TRUE, na = "NA") |> 
+  mutate(dif = abs(mesure1 -mesure2))
+
+var_label(tra$dif) = "Différence"
+```
+
+```{r}
+#| label: tbl-intra1
+#| tbl-cap: Différence des mesures
+
+tra |>
+  dplyr::select(!structure) |> 
+  tbl_summary(by = nom,
+              missing_text = "Manquant") |> 
+  add_overall(col_label = "**Total**  \nN = {style_number(N)}") |> 
+  bold_labels() |> 
+  add_n() |> 
+  add_p() |> 
+  pexptabph() 
+  
+```
+
+
+```{r}
+#| label: intra-multi
+#| 
+lm(dif~nom + structure, data = tra) |> 
+forest_model()
+```
+
+IL n'y a pas de différence significative sur les différences entre les deux mesures pour les trois experts même après standardisation sur la structure étudiée. 
+
+```{r}
+#| label: fig-dif1
+#| fig-cap: Différence des mesures
+
+zz <- tra |> 
+  ggplot() +
+  aes(y = dif, x= nom, fill = structure) + 
+  geom_boxplot() +
+    labs(
+    title = "Différence entre des mesures répétées",
+    x = "",
+    y = "Différence des mesures (mm)"
+  ) +
+       theme_minimal() +
+  scale_fill_discrete_qualitative(palette = "Dark 3") +
+  theme(
+    plot.title = element_text(size = 10, face = "bold"),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "top"
+  )
+ggplotly(zz)
+```
+
+:::
