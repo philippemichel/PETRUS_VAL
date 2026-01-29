@@ -14,9 +14,25 @@ library("labelled")
 # Nombre de feuilles
 nsh <- read_ods("datas/validation.ods", sheet = 1, range = "A30", col_names = FALSE)
 nsh <- nsh[[1, 1]]
+#
+nc <- NULL
+for (j in 1:13) {
+  nc <- c(nc, paste0("C", j, "d"))
+  nc <- c(nc, paste0("C", j, "d"))
+  nc <- c(nc, paste0("C", j, "g"))
+  nc <- c(nc, paste0("C", j, "g"))
+}
 
 #
 import_val <- function(sh) {
+  nc <- NULL
+  for (j in 1:13) {
+    nc <- c(nc, paste0("C", j, "d"))
+    nc <- c(nc, paste0("C", j, "d"))
+    nc <- c(nc, paste0("C", j, "g"))
+    nc <- c(nc, paste0("C", j, "g"))
+  }
+  #
   nna <- c(
     "", " ", "NA", "ND", "#DIV/0", "!", "NC", "Non visible", "NON MESURABLE", "non evaluable",
     "PAS DIMAGES SANS MESURES", "IMPOSSIBLE", "non évaluable", "#DIV/0 !"
@@ -37,6 +53,7 @@ import_val <- function(sh) {
   expert <- exp |>
     pivot_longer(cols = everything(), values_to = "expert")
   nom <- rep(paste0(nomi[1, 1], " (C", nomi[2, 1], ")"), nrow(expert))
+  coupe <- nc[1:nrow(lecteur)]
   #
   tt <- lecteur |>
     mutate(expert = expert$expert, nom = nom) |>
@@ -47,6 +64,7 @@ import_val <- function(sh) {
       "nerf" = "nf_dt",
       "nerf" = "nf_gch"
     )) |>
+    mutate(coupe = coupe) |>
     mutate_if(is.character, as.factor)
   #
   return(tt)

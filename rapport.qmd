@@ -1,5 +1,5 @@
 ---
-subtitle: "Qualification des intervenants --- V1.1"
+subtitle: "Qualification des intervenants --- V1.3"
 ---
 
 ```{r}
@@ -26,7 +26,7 @@ theme_gtsummary_language(language = "fr", decimal.mark = ",")
 options(OutDec = ",")
 #
 load("datas/validation.RData")
-exp <- FALSE
+exp <- TRUE
 classeur <- "validation1.ods"
 # if (exp){system(paste0("rm -f ",classeur))}
 #
@@ -38,6 +38,9 @@ affl <- list(all_categorical()~"{n}/{N} ({p})")
 
 
 # Réponses
+
+
+## Mesures réalisées
 
 On regarde en premier le nombre de réponses (mesures réellement effectuées) par lecteur. La colonne `total` représente le nb de mesures que le lecteur aurait du faire. La colonne `vrai` les mesures réellement réalisées. 
 
@@ -100,6 +103,42 @@ zz |>
         write_ods(path = classeur, sheet = "nberreur", append = TRUE)
     }
 ```
+
+## Erreurs  par coupe
+
+Pour ce tableau on considère que s'il y a une erreur sur les diamètres du nerf & de sa gaine sur la même coupe il s'agit de la même erreur.
+
+```{r}
+#| label: tbl-erreur-couple
+#| tbl-cap: Erreurs couplées
+
+nee = c(Lecteur = "nom", "Nombre d'erreurs "= "erreurt", 'Nombre coupes' = "n")
+
+zz <- tt |> 
+  mutate(erreur = ifelse(dif >1, 0,1)) |> 
+  group_by(nom, coupe) |>
+  summarise(erreurt = sum(erreur),
+            n = n()) |> 
+  mutate(erreurt = ifelse(erreurt == 2, 0,1)) |> 
+  group_by(nom) |>
+  summarise(erreurt = sum(erreurt, na.rm = TRUE),
+            n = n()) |> 
+rename(all_of(nee))             
+                              
+zz |> 
+    kbl(booktabs = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+    if (exp) {
+      zz |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "nberreurcouple", append = TRUE)
+    }
+
+
+```
+
+
 
 # Concordance des diagnostics  
 
@@ -179,7 +218,7 @@ icc_lecteur <- function(nom_lect) {
     na.omit()
   zz <- icc(
     ttx,
-    model = "twoway", 
+    model = "oneway", 
     type = "consistency", unit = "single"
   )
   return(c(nom_lect,nrow(ttx),paste0(round(zz$value, 2), " (", round(zz$lbound, 2), " - ", round(zz$ubound, 2), ")")))
@@ -216,7 +255,7 @@ icc_lecteur <- function(nom_lect) {
     drop_na()
   zz <- icc(
     ttx,
-    model = "twoway", 
+    model = "oneway", 
     type = "consistency", unit = "s"
   )
   return(list(nom = nom_lect, 
@@ -259,4 +298,9 @@ icc_lecteur <- function(nom_lect) {
   )
 ```
 
+# Versions
 
+## V1.3 (29/01/26)
+
+- Analyse des erreurs couplées
+- Nouvelles lectures des experts pour deux investigateurs
