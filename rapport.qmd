@@ -1,5 +1,5 @@
 ---
-subtitle: "Qualification des intervenants --- V1.3"
+subtitle: "Qualification des intervenants --- V1.3c"
 ---
 
 ```{r}
@@ -67,7 +67,7 @@ tta <- tta |>
   mutate("% Réponses" = paste0(round(100*vrai/total, 0), " %"))
 
 tta |> 
-  kbl(booktabs = TRUE) |> 
+  kbl(booktabs = TRUE, longtable = T) |> 
   kable_styling(latex_options = c("striped", "hold_position"))
 
 
@@ -94,7 +94,7 @@ zz <- tt |>
   mutate(total = total$total) 
 
 zz |> 
-  kbl(booktabs = TRUE)|> 
+  kbl(booktabs = TRUE,  longtable = TRUE)|> 
   kable_styling(latex_options = c("striped", "hold_position"))
 
     if (exp) {
@@ -103,6 +103,7 @@ zz |>
         write_ods(path = classeur, sheet = "nberreur", append = TRUE)
     }
 ```
+\newpage
 
 ## Erreurs  par coupe
 
@@ -126,7 +127,7 @@ zz <- tt |>
 rename(all_of(nee))             
                               
 zz |> 
-    kbl(booktabs = TRUE)|> 
+    kbl(booktabs = TRUE, longtable = TRUE)|> 
   kable_styling(latex_options = c("striped", "hold_position"))
 
     if (exp) {
@@ -192,8 +193,8 @@ zz <- tt |>
   dplyr::select(lecteur, expert) |>
   na.omit() |>
 icc(
-  model = "twoway", 
-  type = "agreement", unit = "average"
+  model = "oneway", 
+  type = "consistency", unit = "single"
   )
 
 ```
