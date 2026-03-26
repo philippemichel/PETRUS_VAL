@@ -15,13 +15,7 @@ library("labelled")
 nsh <- read_ods("datas/validation.ods", sheet = 1, range = "A30", col_names = FALSE)
 nsh <- nsh[[1, 1]]
 #
-nc <- NULL
-for (j in 1:13) {
-  nc <- c(nc, paste0("C", j, "d"))
-  nc <- c(nc, paste0("C", j, "d"))
-  nc <- c(nc, paste0("C", j, "g"))
-  nc <- c(nc, paste0("C", j, "g"))
-}
+
 
 #
 import_val <- function(sh) {

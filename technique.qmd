@@ -1,0 +1,142 @@
+---
+subtitle: "technique habituelle & interface vitrée V1.0"
+lof: false
+lot: false
+toc: false
+---
+
+
+
+# Comparaison globale
+
+
+On compare ici deux techniques de mesure des diamètres du nerf optique & de sa gaine : technique habituelle vs interface vitrée.
+
+```{r}
+#| label: setup
+
+rm(list = ls())
+
+library("tidyverse")
+library("readODS")
+library("labelled")
+library("forestmodel")
+library("gtsummary")
+library("kableExtra")
+library("janitor")
+library("irr")
+library("baseph")
+library("colorspace")
+
+theme_gtsummary_language(language = "fr", decimal.mark = ",")
+options(OutDec = ",")
+```
+
+
+```{r}
+#| label: import
+
+tt <- read_ods("datas/techniques.ods", sheet = 2, na = c("", " ", "NA", "ND")) |> 
+  clean_names() |> 
+  as_tibble()
+```
+
+```{r}
+#| label: Global
+#| tbl-cap: Résultats globaux
+
+tt |> 
+  dplyr::select(structure, habituel, interface_vitre) |>
+  tbl_summary(by = structure, statistic = list(all_continuous() ~ "{mean} ({sd})"), missing = "no") |> 
+    bold_labels() |> 
+  add_n() |> 
+  pexptabph() 
+
+```
+
+
+```{r}
+#| label: comp
+
+ligvar <- function(tit, a, b,nn) {
+  dif <- round(mean(a)-mean(b),2)
+  zzt <- t.test(a, b, paired = TRUE)
+  zzt <- paste0("t = ", round(zzt$statistic, 2), " (", beaup(zzt$p.value, affp = TRUE), ")")
+  #
+  zzv <- var.test(a, b)
+  zzv <- paste0("F = ", round(zzv$statistic, 2), " (", beaup(zzv$p.value, affp = TRUE), ")")
+  #
+  ll <- c(tit,nn,dif, zzt, zzv)
+  return(ll)
+}
+#
+zz <- na.omit(subset(tt,structure == "gaine"))
+nn <- nrow(zz)
+tbvar <- ligvar("Gaine du nerf optique",zz$habituel,zz$interface_vitre,nn)
+zz <- na.omit(subset(tt,structure == "nerf"))
+nn <- nrow(zz)
+zzt <- ligvar("Nerf optique",zz$habituel,zz$interface_vitre,nn)
+tbvar <- rbind(tbvar,zzt)
+
+vart <-  as_tibble(tbvar)
+names(vart) <- c("Structure", "n", "Moyenne \n des différence (mm)", "Comparaison des moyennes", "Comparaison des variances")
+
+
+```
+
+```{r}
+#| label: tbl_compmed
+#| tbl-cap: Comparaison des deux méthodes
+
+vart |> 
+  kbl(booktabs = T,  longtable = TRUE
+      ) |> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+Les moyennes sont comparées par un test t de Student pour séries appariées & les variances par un test F de Fisher. 
+
+Les deux techniques donnent des résultats différents ce qui était prévisible mais il n'y a pas de différence sur la dispersion (variance). Il est donc impossible de dire qu'une des techniques est meilleure que l'autre sur ces données. 
+
+# ICC par technique
+
+```{r}
+#| label: icchab
+
+zzh <- tt |> 
+  dplyr::select(!interface_vitre ) |> 
+  pivot_wider(names_from = expert, values_from = habituel) |> 
+  drop_na() |>
+  dplyr::select(-structure, -coupe) |>
+   icc(
+   model = "oneway", 
+   type = "consistency", unit = "s"
+ )
+
+icch <- paste0(round(zzh$value,2), " [", round(zzh$lbound,2), " ; ", round(zzh$ubound,2), "]")
+```
+
+```{r}
+#| label: iccvit
+
+zzv <- tt |> 
+  dplyr::select(!habituel ) |> 
+  pivot_wider(names_from = expert, values_from = interface_vitre) |> 
+  drop_na() |>
+  dplyr::select(-structure, -coupe) |>
+   icc(
+   model = "oneway", 
+   type = "consistency", unit = "s"
+ )
+
+iccv <- paste0(round(zzv$value,2), " [", round(zzv$lbound,2), " ; ", round(zzv$ubound,2), "]")
+```
+
+\gls{icc} (avec son intervalle de confiance à \qty{95}{\percent}) ((modèle à un facteur à effets aléatoires — one-way random) : 
+
+- Méthode habituelle : `r icch `
+- Interface vitrée : `r iccv`
+
+
+L'\gls{icc} semble identique pour les deux méthodes. 

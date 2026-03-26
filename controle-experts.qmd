@@ -1,39 +1,8 @@
 ---
-title: "PETRUS"
-subtitle: "Validation & contrôle qualité des experts"
-lang: fr
-language:
-  title-block-author-single: "Auteur"
-author:
-  - name: "Dr Philippe MICHEL"
-    orcid: "0000-0003-2392-7186"
-    email: "philippe.michel@ght-novo.fr"
-    role: "Statisticien"
-    affiliations:
-      name: "USRC - Hôpital NOVO"
-      city: Pontoise
-      department: "Unité de Soutien à la Recherche Clinique"
-title-block-banner: true
-format:
-  html:
-    embed-resources: true
-    theme: minty
-    code-fold: true
-    html-math-method: katex
-    highlight-style: ayu
-    page-layout: full
-    toc: true
-    number-sections: true
-    smooth-scroll: true
-    citation-hover: true
-bibliography: stat.bib
-csl: jama.csl
-license: "MIT"
-warning: false
-message: false
-cache: false
+subtitle: "Validation & contrôle qualité des expert - V2.1"
+cache: true
 ---
-::: {.panel-tabset}
+
 
 # Introduction
 
@@ -48,7 +17,6 @@ library("labelled")
 library("forestmodel")
 library("gtsummary")
 library("kableExtra")
-library("plotly")
 library("janitor")
 library("irr")
 library("baseph")
@@ -84,11 +52,21 @@ expsg <- function(sh, i) {
     "PAS DIMAGES SANS MESURES", "IMPOSSIBLE", "non évaluable", "#DIV/0 !"
   )
   tit <- paste0("exp", i)
-  zz <- read_ods("datas/validation.ods", sheet = sh, range = range[i], col_names = TRUE, na = nna) |>
-    clean_names() |>
-    #  dplyr::filter(nerf_optique_droit!= "zz" | is.na(nerf_optique_droit)) |>
-    mutate_all(as.numeric) |>
-    pivot_longer(cols = everything(), values_to = tit)
+zz <- read_ods("datas/validation.ods", sheet = sh, range = range[i],
+               col_names = TRUE, na = nna) |>
+  clean_names() |>
+  mutate_all(as.numeric) |> 
+  mutate(epgdt  = gaine_du_nerf_optique_droit - nerf_optique_droit) |> 
+  mutate(epggch  = gaine_du_nerf_optique_gauche - nerf_optique_gauche) |>
+  pivot_longer(cols = everything(), values_to = tit) 
+  zz$name <- fct_recode(zz$name,
+    "gaine" = "gaine_du_nerf_optique_droit",
+    "gaine" = "gaine_du_nerf_optique_gauche",
+    "nerf" = "nerf_optique_droit",
+    "nerf" = "nerf_optique_gauche",
+    "épaisseur_gaine" = "epgdt",
+    "épaisseur_gaine" = "epggch"
+  )
   return(zz)
 }
 
@@ -100,21 +78,20 @@ expsg <- function(sh, i) {
 tt <- tibble(structure = NULL, exp1 = NULL, exp2 = NULL, exp3 = NULL)
 
 for (sh in 1:nsh) {
-  ll <- rep(nfg, 13)
-  for (i in 1:3) {
-    zz <- expsg(sh, i)
-    ll <- cbind(ll, zz[, 2])
+  zz <- expsg(sh, 1)
+  for (i in 2:3) {
+    aa <- expsg(sh, i)
+    zz <- cbind(zz, aa[, 2])
   }
-  tt <- rbind(tt, ll)
+  tt <- rbind(tt, zz)
 }
-## Recodage de tt$ll en tt$structure
-tt$structure <- tt$ll |>
-  fct_recode(
-    "gaine" = "gn_dt",
-    "gaine" = "gn_gch",
-    "nerf" = "nf_dt",
-    "nerf" = "nf_gch"
-  )
+
+
+tt <- rename(tt, mesure = name)
+
+tts <- tt |> 
+  dplyr::filter(mesure != "épaisseur_gaine")
+
 ```
 
 
@@ -124,7 +101,7 @@ On calcule l'ICC sur l'ensemble des mesures des experts pour les validations des
 ```{r}
 #| label: icc-contrôle
 
-zz <-  tt |> 
+zz <-  tts |> 
    dplyr::select(starts_with("exp")) |> 
    drop_na() |> 
  icc(
@@ -139,17 +116,19 @@ Le calcul est réalisé sur `r round(zz$subjects,2)` mesures. L'ICC  est de `r r
 ## Analyse par expert
 
 ```{r}
-ttl <- tt |> 
+ttl <- tts |> 
   pivot_longer(cols = c(exp1,exp2,exp3))
 
 zz <- kruskal.test(value ~ name, data = ttl)
 ```
 
 
+
+
 ```{r}
 #| label: concor-multi
 #| 
-lm(value~name + structure, data = ttl) |> 
+lm(value~name + mesure, data = ttl) |> 
 forest_model()
 ```
 
@@ -169,13 +148,58 @@ var_label(tra$dif) = "Différence"
 ```
 
 ```{r}
+#| label: tbl-intraintra
+#| tbl-cap: Différence des mesures intra expert
+
+zz <- wilcox.test(tra$mesure1, tra$mesure2, paired = TRUE, var.equal = TRUE)
+zzt <- beaup(zz$p.value, affp = 1)
+
+trax <- tra |> 
+  dplyr::filter(nom == "exp1")
+zz <- wilcox.test(trax$mesure1, trax$mesure2, paired = TRUE, var.equal = TRUE)
+zz1 <- beaup(zz$p.value, affp = 1)
+
+trax <- tra |> 
+  dplyr::filter(nom == "exp2")
+zz <- wilcox.test(trax$mesure1, trax$mesure2, paired = TRUE, var.equal = TRUE)
+zz2 <- beaup(zz$p.value, affp = 1)
+
+trax <- tra |> 
+  dplyr::filter(nom == "exp3")
+zz <- wilcox.test(trax$mesure1, trax$mesure2, paired = TRUE, var.equal = TRUE)
+zz3 <- beaup(zz$p.value, affp = 1)
+
+mm <- tra |> 
+  group_by(nom) |>
+  summarise(moyenne = mean(dif, na.rm = TRUE),
+            sdx = sd(dif, na.rm = TRUE))
+
+mm <- mm |> 
+  add_row(moyenne = mean(tra$dif, na.rm = TRUE), sdx = sd(tra$dif, na.rm = TRUE))
+
+moyenne = paste0(round(mm$moyenne,2)," ± ", round(mm$sdx,2))
+
+nom <- c("exp1", "exp2", "exp3", "Total")
+pval <- c(zz1, zz2, zz3, zzt)
+zz <- tibble(nom, moyenne, pval)
+
+zz |> 
+  kbl(booktabs = TRUE, col.names = c("Expert", "Moyenne ± écart-type", "p-value")) |> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+L'hypothèse 0 est que les différences entre les deux mesures sont nulle.  Une p-value basse est en faveur de l'existence d'une différence. La moyenne est juste présente pour l'illustration mais n'a pas de vrai sens. Seul l'expert 2 semble avoir une concordance *parfaite* entre les deux mesures. 
+
+
+## Diffrence des mesures intra entre les experts
+
+```{r}
 #| label: tbl-intra1
 #| tbl-cap: Différence des mesures
 
 tra |>
   dplyr::select(!structure) |> 
   tbl_summary(by = nom,
-              missing_text = "Manquant") |> 
+              missing   _text = "Manquant") |> 
   add_overall(col_label = "**Total**  \nN = {style_number(N)}") |> 
   bold_labels() |> 
   add_n() |> 
@@ -198,7 +222,7 @@ IL n'y a pas de différence significative sur les différences entre les deux me
 #| label: fig-dif1
 #| fig-cap: Différence des mesures
 
-zz <- tra |> 
+tra |> 
   ggplot() +
   aes(y = dif, x= nom, fill = structure) + 
   geom_boxplot() +
@@ -219,7 +243,5 @@ zz <- tra |>
     axis.text.y = element_text(size = 8),
     legend.position = "top"
   )
-ggplotly(zz)
 ```
 
-:::
