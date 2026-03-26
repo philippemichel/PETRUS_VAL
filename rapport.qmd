@@ -1,5 +1,5 @@
 ---
-subtitle: "Qualification des intervenants --- V1.3c"
+subtitle: "Qualification des intervenants --- V1.4"
 ---
 
 ```{r}
@@ -45,7 +45,7 @@ affl <- list(all_categorical()~"{n}/{N} ({p})")
 On regarde en premier le nombre de réponses (mesures réellement effectuées) par lecteur. La colonne `total` représente le nb de mesures que le lecteur aurait du faire. La colonne `vrai` les mesures réellement réalisées. 
 
 ```{r}
-#| label: tbl-nb-rep
+#| label: tbl-nbrep
 #| tbl-cap: Nombre de réponses
 
 
@@ -79,6 +79,30 @@ tta |>
 
 ```
  
+ ## Résultats bruts
+ \label{glob}
+ 
+ On résume ici les mesures brutes des lecteurs.
+ 
+ 
+```{r}
+  #| label: tbl-resultatsbruts
+
+
+nn <- tt$lecteur[seq(1, nrow(tt), by = 2)]
+gg <- tt$lecteur[seq(2, nrow(tt), by = 2)]
+epais <- gg-nn
+zz <- tibble(nn,gg,epais)
+
+tbl_summary(zz, 
+            missing = "no",
+            statistic = list(all_continuous() ~ "{mean} ± {sd}"),
+            label = list(nn = "Nerf optique", gg = "Gaine du nerf", epais = "Épaisseur de la gaine"))|> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = exp, nomfich = classeur , nomsheet = "brut", lg = TRUE)
+```
+ 
 # Erreur
 
 On compte le nombre de cas où la mesure du lecteur diffère de plus de \qty{1}{\mm} de la moyenne des mesures des experts. Ne sont prises en compte que les mesures effectuées pas les <*mesure impossible*> ou autre. 
@@ -110,7 +134,7 @@ zz |>
 Pour ce tableau on considère que s'il y a une erreur sur les diamètres du nerf & de sa gaine sur la même coupe il s'agit de la même erreur.
 
 ```{r}
-#| label: tbl-erreur-couple
+#| label: tbl-erreurcouple
 #| tbl-cap: Erreurs couplées
 
 nee = c(Lecteur = "nom", "Nombre d'erreurs "= "erreurt", 'Nombre coupes' = "n")
@@ -193,7 +217,7 @@ zz <- tt |>
   dplyr::select(lecteur, expert) |>
   na.omit() |>
 icc(
-  model = "oneway", 
+  model = "t", 
   type = "consistency", unit = "single"
   )
 
@@ -211,15 +235,15 @@ Le calcul est réalisé sur `r round(zz$subjects,2)` mesures. L'\gls{icc}  est d
 
 nn <- levels(tt$nom)
 
-icc_lecteur <- function(nom_lect) {
-  ttx <- tt |> 
+icclecteur <- function(nom_lect, df = tt) {
+  ttx <- df |> 
  #   dplyr::filter(type == "nerf") |>
     dplyr::filter(nom == nom_lect) |>
     dplyr::select(lecteur, expert) |>
     na.omit()
   zz <- icc(
     ttx,
-    model = "oneway", 
+    model = "t", 
     type = "consistency", unit = "single"
   )
   return(c(nom_lect,nrow(ttx),paste0(round(zz$value, 2), " (", round(zz$lbound, 2), " - ", round(zz$ubound, 2), ")")))
@@ -227,11 +251,13 @@ icc_lecteur <- function(nom_lect) {
   #
   zz <- NULL
   for(i in 1:length(nn)) {
-    ll <- icc_lecteur(nn[i])
+    ll <- icclecteur(nn[i])
     zz <- rbind(zz, ll)
   }
   zz <- as_tibble(zz)
   names(zz) <- c("Lecteur", "Nb mesures", "ICC (IC95%)")
+  
+iccl <- zz$`ICC (IC95%)`
   #
   zz |> 
     kbl(booktabs = TRUE)|> 
@@ -256,7 +282,7 @@ icc_lecteur <- function(nom_lect) {
     drop_na()
   zz <- icc(
     ttx,
-    model = "oneway", 
+    model = "t", 
     type = "consistency", unit = "s"
   )
   return(list(nom = nom_lect, 
@@ -299,9 +325,125 @@ icc_lecteur <- function(nom_lect) {
   )
 ```
 
+À noter, pour le Dr Morard, beaucoup de coupes n'ont pas pu être mesurées par les experts ce qui rend les résultats moins fiables. 
+
+## Tableaux récapitulatifs
+\label{recap}
+
+```{r}
+#| label: prepa-recap
+
+lect1 <- tt |> 
+  group_by(nom, type) |>
+  summarise(mlect = mean(lecteur, na.rm = TRUE), sdlect = sd(lecteur, na.rm = TRUE)) |> 
+  mutate(lecteur = paste0(round(mlect, 2), " ± ", round(sdlect, 2))) |> 
+  dplyr::select(-mlect, -sdlect)
+
+exp1 <- tt |> 
+  group_by(nom, type) |>
+  summarise(mexp = mean(expert, na.rm = TRUE), sdexp = sd(expert, na.rm = TRUE)) |> 
+mutate(experts = paste0(round(mexp, 2), " ± ", round(sdexp, 2))) |> 
+  dplyr::select(-mexp, -sdexp)
+
+dif1 <- tt |> 
+  mutate(difv = lecteur - expert) |>
+  group_by(nom, type) |>
+  summarise(mdif = mean(difv, na.rm = TRUE), sddif = sd(difv, na.rm = TRUE)) |> 
+mutate(Différence = paste0(round(mdif, 2), " ± ", round(sddif, 2))) |> 
+  dplyr::select(-mdif, -sddif)
+
+
+ttz <- lect1 |> 
+  left_join(exp1, by = c("nom", "type")) |> 
+  left_join(dif1, by = c("nom", "type")) 
+```
+
+```{r}
+#| label: prepa_icc
+
+zzn1 <- NULL
+dfx <- tt |>
+  dplyr::filter(type == "nerf")
+
+  for(i in 1:length(nn)) {
+    ll <- icclecteur(nn[i],dfx)
+    zzn1 <- rbind(zzn1, ll)
+  }
+
+
+  zzg1 <- NULL 
+dfx <- tt |>
+  dplyr::filter(type == "gaine")
+
+  for(i in 1:length(nn)) {
+    ll <- icclecteur(nn[i],dfx)
+    zzg1 <- rbind(zzg1, ll)
+  }
+```
+
+
+```{r}
+#| label: tbl-recapn
+#| tbl-cap: Tableau récapitulatif - nerf optique
+
+
+ttzn <- ttz |> 
+  dplyr::filter(type == "nerf") 
+ttzn <- cbind(ttzn, zzn1[,3]) |> 
+  dplyr::select(-type)
+names(ttzn)[5] <- "ICC[note]"
+
+ttzn |> 
+  kbl(booktabs = TRUE, longtable = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position")) |> 
+  add_header_above(c(" ", "Mesures[note]" = 3, " ")) %>%
+  add_footnote(c("Moyenne ± écart-type des mesures du nerf optique pour les lecteurs et les experts, ainsi que la différence entre les deux.",  "ICC (IC 95 %)"))
+
+    if (exp) {
+      ttzn |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "recapnerf", append = TRUE)
+    }
+```
+
+
+```{r}
+#| label: tbl-recapg
+#| tbl-cap: Tableau récapitulatif - gaine du nerf optique
+
+
+ttzg <- ttz |> 
+  dplyr::filter(type == "gaine") 
+ttzg <- cbind(ttzg, zzg1[,3]) |> 
+  dplyr::select(-type)
+names(ttzg)[5] <- "ICC[note]"
+
+ttzg |> 
+  kbl(booktabs = TRUE, longtable = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position")) |> 
+  add_header_above(c(" ", "Mesures[note]" = 3, " ")) %>%
+  add_footnote(c("Moyenne ± écart-type des mesures de la gaine nerf optique pour les lecteurs et les experts, ainsi que la différence entre les deux.",  "ICC (IC 95 %)"))
+
+    if (exp) {
+      ttzn |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "recapgaine", append = TRUE)
+    }
+```
+
+
+ On peut noter que les mesures des lecteurs sont toujours supérieures à celles des experts. 
+ 
+ Les ICC sont beaucoup moins bon que pour la totalité des mesures simplement parce qu'il y a moins de mesures (et une fiabilité moindre). néanmoins on voit qque mes mesures pour la gaine sont meilleures que pour le nerf. 
+ 
 # Versions
 
 ## V1.3 (29/01/26)
 
 - Analyse des erreurs couplées
 - Nouvelles lectures des experts pour deux investigateurs
+
+## V 1.4 (31/03/26)
+
+- Moyennes & écart-type globaux (\ref{glob})
+- Tableaux récapitulatifs des mesures (\ref{recap})
