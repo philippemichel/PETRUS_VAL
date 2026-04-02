@@ -1,5 +1,5 @@
 ---
-subtitle: "Qualification des intervenants --- V1.4"
+subtitle: "Qualification des intervenants --- V1.5"
 ---
 
 ```{r}
@@ -26,12 +26,24 @@ theme_gtsummary_language(language = "fr", decimal.mark = ",")
 options(OutDec = ",")
 #
 load("datas/validation.RData")
-exp <- TRUE
+exp <- FALSE
 classeur <- "validation1.ods"
 # if (exp){system(paste0("rm -f ",classeur))}
 #
 cat <- list(all_continuous() ~ "wilcox.test", all_categorical() ~ "chisq.test")
 affl <- list(all_categorical()~"{n}/{N} ({p})")
+```
+
+```{r}
+#| label: macro_ic
+
+nbicph <- function(nn, bb, hh) {
+  nn <- signif(nn, 3)
+  bb <- signif(bb, 3)
+  hh <- signif(hh, 3)
+  ll <- paste0(nn, " [", bb, " ; ", hh, "]")
+  return(ll)
+}
 ```
 
 
@@ -222,6 +234,45 @@ icc(
   )
 
 ```
+
+```{r}
+#| label: tbl-iccglob2
+#| tbl-cap: ICC global par structure
+
+
+nicc <- tt |> 
+  dplyr::filter(type == "nerf") |> 
+  dplyr::select(lecteur, expert) |>
+  na.omit() |>
+  icc(
+    model = "t",
+    type = "consistency", unit = "single")
+lnn <- c("Nerf optique", 
+         nicc$subjects,
+         nbicph(nicc$value,nicc$lbound,nicc$ubound),
+         beaup(nicc$p.value))
+
+nicc <- tt |> 
+  dplyr::filter(type == "gaine") |> 
+  dplyr::select(lecteur, expert) |>
+  na.omit() |>
+  icc(
+    model = "t",
+    type = "consistency", unit = "single")
+lgg <- c("Gaine du nerf optique", 
+         nicc$subjects,
+         nbicph(nicc$value,nicc$lbound,nicc$ubound),
+         beaup(nicc$p.value))
+
+rbind(lnn, lgg) |> 
+  as_tibble() |> 
+  rename(Structure = V1, 'Nb mesures' = V2, 'ICC [IC 95%]' = V3, p_value = V4) |> 
+    kbl(booktabs = TRUE, longtable = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+
 
 Le calcul est réalisé sur `r round(zz$subjects,2)` mesures. L'\gls{icc}  est de `r round(zz$value, 2)` (IC95% : `r round(zz$lbound, 2)` - `r round(zz$ubound, 2)`), ce qui indique une **`r ifelse(zz$value > 0.75, "bonne", "mauvaise")` concordance** entre les lecteurs et les experts.
 
@@ -434,11 +485,231 @@ ttzg |>
 
  On peut noter que les mesures des lecteurs sont toujours supérieures à celles des experts. 
  
- Les ICC sont beaucoup moins bon que pour la totalité des mesures simplement parce qu'il y a moins de mesures (et une fiabilité moindre). néanmoins on voit qque mes mesures pour la gaine sont meilleures que pour le nerf. 
+ Les \gls{icc} sont beaucoup moins bon que pour la totalité des mesures simplement parce qu'il y a moins de mesures (et une fiabilité moindre). néanmoins on voit qque mes mesures pour la gaine sont meilleures que pour le nerf. 
+ 
+# Compléments demandés le 29/03/26
+
+## ICC par structure (gaine /nerf optique) sur la reproductibilité entre les experts
+
+Le calcul est fait sur les mesures des experts pour toutes les évaluations des lecteurs. À noter près d'une coupe sur deux ne peux pas être prise en compte dans le calcul de l'\gls{icc} car il y a au moins une valeur manquante.
+
+```{r}
+#| label: icc-experts-prepa
+
+nsh <- read_ods("datas/validation.ods", sheet = 1, range = "A30", col_names = FALSE)
+nsh <- nsh[[1, 1]]
+
+#
+range <- c("F10:I23", "J10:M23", "N10:Q23")
+#
+expsg <- function(sh, i) {
+  nna <- c(
+    "", " ", "NA", "ND", "#DIV/0", "!", "NC", "Non visible", "NON MESURABLE", "non evaluable",
+    "PAS DIMAGES SANS MESURES", "IMPOSSIBLE", "non évaluable", "#DIV/0 !"
+  )
+  tit <- paste0("exp_", i)
+  coupe <- c(paste0("cp_", 1:13, "_d", sh), paste0("cp_", 1:13, "_g", sh))
+  nfg <- c("nf_dt", "gn_dt", "nf_gch", "gn_gch")
+  zz <- read_ods("datas/validation.ods", sheet = sh, range = range[i], col_names = TRUE, na = nna) |>
+    janitor::clean_names() |>
+    mutate_all(as.numeric)
+  nerf <- c(zz$nerf_optique_droit, zz$nerf_optique_gauche)
+  gaine <- c(zz$gaine_du_nerf_optique_droit, zz$gaine_du_nerf_optique_gauche)
+  expert <- rep(tit, 26)
+  aa <- tibble(expert, coupe, nerf, gaine)
+  return(aa)
+}
+#
+
+ll <- NULL
+for (sh in 1:nsh) {
+  for (i in 1:3) {
+    zz <- expsg(sh, i)
+    ll <- rbind(ll, zz)
+  }
+}
+```
+
+```{r}
+#| label: exp-icc
+
+
+
+nerf <- ll |>
+  dplyr::select(!gaine) |>
+  pivot_wider(names_from = "expert",values_from = c(nerf)) |> 
+  dplyr::select(!coupe)
+  
+icce <- nerf |> 
+  icc(
+    model = "t",
+    type = "consistency", unit = "single")
+lnn <- c("Nerf optique", 
+         icce$subjects,
+         nbicph(icce$value,icce$lbound,icce$ubound),
+         beaup(icce$p.value))
+#
+gaine <- ll |>
+  dplyr::select(!nerf) |>
+  pivot_wider(names_from = "expert",values_from = c(gaine)) |> 
+  dplyr::select(!coupe)
+
+icce <- gaine |> 
+  icc(
+    model = "t",
+    type = "consistency", unit = "single")
+lgg <- c("Gaine du nerf optique", 
+         icce$subjects,
+         nbicph(icce$value,icce$lbound,icce$ubound),
+         beaup(icce$p.value))
+
+mesure <- c(ll$nerf,ll$gaine)
+lexp <- c(ll$expert,ll$expert)
+cp <- c(paste0(ll$coupe,1),paste0(ll$coupe,2))
+icce <- tibble(lexp,cp,mesure) |> 
+  pivot_wider(names_from = lexp,values_from = mesure) |> 
+  dplyr::select(!cp) |>
+  icc(
+    model = "t",
+    type = "consistency", unit = "single")
+ltt <- c("Toutes mesures", 
+         icce$subjects,
+         nbicph(icce$value,icce$lbound,icce$ubound),
+         beaup(icce$p.value))
+#
+ticc <- rbind(lnn, lgg) |> 
+  as_tibble() |> 
+  rename(Structure = V1, 'Nb mesures' = V2, 'ICC [IC 95%]' = V3, p_value = V4)
+```
+
+```{r}
+#| label: tbl-icc_exp
+#| tbl-cap: ICC entre les experts par structure
+
+ticc |> 
+  kbl(booktabs = TRUE, longtable = TRUE)|> 
+  kable_styling(latex_options = c("striped", "hold_position")) |> 
+  add_footnote(c("ICC (IC 95 %) entre les trois experts pour les mesures du nerf optique et de la gaine du nerf optique. P-value calculée sur un test F de Fisher d'analyse de variances"))
+
+    if (exp) {
+      ticc |>
+        write_ods(path = classeur, sheet = "icc_experts", append = TRUE)
+    }
+
+
+```
+
+
+### Explication des résultats
+
+Pour le nerf l'expert 2 rend des mesures plus petites que les deux autres. Pour la gaine l'expert 3 rend des mesures plus petites que les deux autres. 
+
+Si on mélange les deux mesures ces différences se compensent créant artificiellement une meilleure concordance. 
+
+
+```{r}
+#| label: tbl-explicn
+#| tbl-cap: Moyenne & écart-types des mesures du nerf par les experts
+
+ggt <- nerf |> 
+    pivot_longer(cols = c(1:3), names_to = "nom", values_to = "value") 
+
+ggt |> 
+  tbl_summary(by = nom,
+              statistic = list(
+                all_continuous() ~ "{mean} ± {sd}")) |> 
+  add_p() |>
+  bold_labels() |> 
+  modify_header(label ~ " ")  
+
+
+```
+
+```{r}
+#| label: fig-explicn
+#| fig-cap: Mesures du nerf par les experts
+
+ggt |> 
+ggplot() +
+  aes(y = value, x = nom, fill = nom) +
+  geom_violin() +
+  geom_boxplot(width = 0.2, fill = "grey90") +
+    labs(
+    title = "Mesures de la gaine du nerf optique par les experts",
+    x = "Expert",
+    y = "Mesures (mm)",
+    fill = "Expert"
+  ) +
+  theme_light() +
+  theme(
+      plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(,
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "none"
+  )
+```
+
+
+```{r}
+#| label: tbl-explicg
+#| tbl-cap: Moyenne & écart-types des mesures de la gaine par les experts
+
+ggt <- gaine |> 
+    pivot_longer(cols = c(1:3), names_to = "nom", values_to = "value") 
+
+ggt |> 
+  tbl_summary(by = nom,
+              statistic = list(
+                all_continuous() ~ "{mean} ± {sd}")) |> 
+  add_p() |>
+  bold_labels() |> 
+  modify_header(label ~ " ")  
+
+
+```
+
+```{r}
+#| label: fig-explicg
+#| fig-cap: Mesures de la gaine par les experts
+
+ggt |> 
+ggplot() +
+  aes(y = value, x = nom, fill = nom) +
+  geom_violin() +
+  geom_boxplot(width = 0.2, fill = "grey90") +
+  labs(
+    title = "Mesures de la gaine du nerf optique par les experts",
+    x = "Expert",
+    y = "Mesures (mm)",
+    fill = "Expert"
+  ) +
+  theme_light() +
+  theme(
+      plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(,
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "none"
+  )
+```
+
  
 # Versions
 
-## V1.3 (29/01/26)
+## V 1.3 (29/01/26)
 
 - Analyse des erreurs couplées
 - Nouvelles lectures des experts pour deux investigateurs
@@ -447,3 +718,7 @@ ttzg |>
 
 - Moyennes & écart-type globaux (\ref{glob})
 - Tableaux récapitulatifs des mesures (\ref{recap})
+
+## V  1.5 (02/04/2026)
+- ICC intra expert par structure avec quelques explications. 
+
