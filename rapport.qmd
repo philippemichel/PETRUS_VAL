@@ -20,6 +20,7 @@ library(GGally)
 library(irr)
 library(colorspace)
 library(apyramid)
+library(ggsci)
 
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
@@ -641,6 +642,7 @@ ggplot() +
     fill = "Expert"
   ) +
   theme_light() +
+  scale_fill_jama() +
   theme(
       plot.title = element_text(size = 14, face = "bold"),
     plot.subtitle = element_text(size = 12),
@@ -691,6 +693,7 @@ ggplot() +
     fill = "Expert"
   ) +
   theme_light() +
+  scale_fill_jama() +
   theme(
       plot.title = element_text(size = 14, face = "bold"),
     plot.subtitle = element_text(size = 12),
